@@ -1,0 +1,22 @@
+services:
+
+  app:
+    image: cdwfs-auth-app
+    ports:
+      - "8080:8080"
+    restart: on-failure
+    environment:
+      - APP_MASTER_KEY=UneCleDe32CaracteresExactement!!
+      - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/auth_db_tp3
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=root
+    depends_on:
+      - mysql
+
+  mysql:
+    image: mysql:8
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=auth_db_tp3
+    ports:
+      - "3307:3306"

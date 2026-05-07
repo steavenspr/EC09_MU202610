@@ -1,0 +1,26 @@
+# Dépendances PHP — réinstallées par Composer dans le builder
+vendor/
+
+# Fichiers d'environnement — JAMAIS dans une image Docker
+.env
+.env.local
+
+# Cache local — régénéré dans le container
+bootstrap/cache/*
+storage/logs/*
+storage/framework/cache/*
+storage/framework/sessions/*
+storage/framework/views/*
+
+# Git et CI — inutiles dans l'image
+.git/
+.github/
+
+# Tests — on les garde dans l'image pour pouvoir lancer `php artisan test`
+# depuis le container. Impact prod : negligeable (~5 Ko), Laravel ne les
+# charge que sur demande explicite.
+
+# Fichiers divers
+*.md
+.idea/
+.vscode/

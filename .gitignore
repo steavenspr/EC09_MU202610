@@ -1,0 +1,103 @@
+# ══════════════════════════════════════
+#  BACKEND — Laravel
+# ══════════════════════════════════════
+
+backend/vendor/
+backend/node_modules/
+
+# Environnement
+backend/.env
+backend/.env.backup
+backend/.env.production
+backend/.env.*.local
+
+# Cache & stockage
+backend/storage/*.key
+backend/storage/logs/
+backend/storage/framework/cache/
+backend/storage/framework/sessions/
+!backend/storage/framework/views/
+backend/storage/framework/views/*
+!backend/storage/framework/views/.gitignore
+backend/bootstrap/cache/
+backend/public/storage
+backend/public/hot
+backend/public/build
+
+# Tests
+backend/.phpunit.result.cache
+backend/.phpunit.cache/
+
+# Divers Laravel
+backend/auth.json
+backend/.phpactor.json
+backend/Homestead.yaml
+backend/Homestead.json
+backend/.vagrant/
+
+# Logs
+backend/storage/pail/
+npm-debug.log
+yarn-error.log
+
+
+# ══════════════════════════════════════
+#  FRONTEND — React (Vite)
+# ══════════════════════════════════════
+
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# Environnement
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# Cache Vite
+frontend/.vite/
+frontend/.vite-inspect/
+
+# Logs
+frontend/npm-debug.log*
+frontend/yarn-error.log*
+frontend/yarn-debug.log*
+frontend/.pnpm-debug.log*
+
+# ══════════════════════════════════════
+#  RACINE DU PROJET
+# ══════════════════════════════════════
+
+.env
+docker-volumes/
+
+# ══════════════════════════════════════
+#  OS & ÉDITEURS
+# ══════════════════════════════════════
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# VSCode
+.vscode/
+!.vscode/extensions.json
+
+# PhpStorm
+.idea/
+*.iml
+
+# Cursor (regles locales, preferences personnelles)
+.cursor/
+
+# ══════════════════════════════════════
+#  LOGS GÉNÉRAUX
+# ══════════════════════════════════════
+
+*.log
+
+# Documents PDF (jamais versionnes)
+*.pdf
+
+# Auth-server (Maven — build local)
+auth-server/target/

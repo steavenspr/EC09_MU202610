@@ -1,0 +1,211 @@
+services:
+
+  # ─────────────────────────────────────────
+  # MySQL — base de données principale
+  # ─────────────────────────────────────────
+  db:
+    image: mysql:8.0          # tag précis, jamais "latest"
+    restart: unless-stopped   # redémarre automatiquement sauf si arrêt manuel
+
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+    volumes:
+      # Volume nommé → les données persistent même si le container est supprimé
+      - mysql_data:/var/lib/mysql
+      # Scripts SQL au premier init du volume (ex. base auth_db pour auth-server)
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+
+    networks:
+      - skillhub_net
+
+    # Healthcheck : vérifie que MySQL est prêt à accepter des connexions
+    # Avant que ce check soit OK, Laravel ne démarrera pas
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s   # vérifie toutes les 10 secondes
+      timeout: 5s     # abandonne si pas de réponse après 5s
+      retries: 5      # déclare le service "unhealthy" après 5 échecs
+
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
+
+
+  # ─────────────────────────────────────────
+  # MongoDB — logs et historisation
+  # ─────────────────────────────────────────
+  mongodb:
+    image: mongo:7.0
+    restart: unless-stopped
+
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGODB_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGODB_PASSWORD}
+
+    volumes:
+      - mongo_data:/data/db
+
+    networks:
+      - skillhub_net
+
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
+
+
+  # ─────────────────────────────────────────
+  # Backend Laravel
+  # ─────────────────────────────────────────
+  api:
+    build:
+      context: ./backend      # dossier contenant le Dockerfile
+      dockerfile: Dockerfile
+
+    restart: unless-stopped
+
+    # Charge toutes les variables du fichier .env
+    env_file: .env
+
+    ports:
+      - "8000:8000"
+
+    networks:
+      - skillhub_net
+
+    # Laravel ne démarre QUE si MySQL ET MongoDB sont healthy
+    depends_on:
+      db:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+
+    # Healthcheck : vérifie que l'API répond sur /api/health
+    # (on créera cette route dans Laravel juste après)
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: "0.5"
+
+
+  # ─────────────────────────────────────────
+  # Auth-server (Spring Boot) — JWT + login HMAC
+  # ─────────────────────────────────────────
+  auth-server:
+    build:
+      context: ./auth-server
+      dockerfile: Dockerfile
+
+    restart: unless-stopped
+
+    env_file: .env
+
+    ports:
+      - "8080:8080"
+
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://db:3306/auth_db
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_ISSUER: ${JWT_ISSUER:-ec06-auth-server}
+      JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-15}
+      APP_MASTER_KEY: ${APP_MASTER_KEY}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
+
+    networks:
+      - skillhub_net
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+          cpus: "0.5"
+
+
+  # ─────────────────────────────────────────
+  # Frontend React
+  # ─────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_AUTH_API_BASE_URL: ${VITE_AUTH_API_BASE_URL}
+
+    restart: unless-stopped
+
+    ports:
+      # Mapping host:container
+      # - Container écoute sur 80 (standard Nginx, à ne pas changer)
+      # - Hôte utilise 5173 pour éviter les conflits avec Apache/WAMP/IIS
+      #   et rester cohérent avec le port de dev Vite (npm run dev)
+      # En production, on remettra "80:80" derrière un reverse proxy dédié.
+      - "5173:80"
+
+    networks:
+      - skillhub_net
+
+    # Le frontend ne démarre que si l'API est healthy
+    depends_on:
+      api:
+        condition: service_healthy
+
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: "0.25"
+
+
+# ─────────────────────────────────────────
+# Volumes nommés — persistance des données
+# Sans ça, toutes les données sont perdues
+# quand les containers s'arrêtent
+# ─────────────────────────────────────────
+volumes:
+  mysql_data:
+  mongo_data:
+
+
+# ─────────────────────────────────────────
+# Réseau interne isolé
+# Les services se parlent entre eux via leurs noms
+# (ex: "db", "mongodb", "api")
+# Rien n'est exposé à l'extérieur sauf le port 80
+# ─────────────────────────────────────────
+networks:
+  skillhub_net:
+    driver: bridge

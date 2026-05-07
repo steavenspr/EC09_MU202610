@@ -203,7 +203,7 @@ mvn test
 - **AuthApplicationTests** — chargement du contexte Spring
 ---
 
-## Limite pedagogique
+## Explicatipon
 
 Ce projet utilise un chiffrement reversible (AES-GCM) pour stocker les mots de passe.
 C'est un choix impose par le protocole HMAC qui necessite de recuperer le mot de passe

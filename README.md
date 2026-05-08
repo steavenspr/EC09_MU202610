@@ -1,4 +1,4 @@
-# SkillHub (EC06)
+# SkillHub
 
 Plateforme **e-learning** mettant en relation **formateurs** et **apprenants** : catalogue de formations, modules, inscriptions, tableaux de bord et journalisation d’activité.
 
